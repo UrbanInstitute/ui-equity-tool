@@ -1,6 +1,6 @@
 # Spatial Equity Data Tool
 
-This repo contains all the data and code powering the Spatial Equity Data Tool.
+This repo contains all the data and code powering the [Spatial Equity Data Tool](https://apps.urban.org/features/equity-data-tool/).
 It also contains the files needed to create, and deploy the
 Spatial Equity Data Tool and all of it's required infrastructure on AWS COdestar
 (a CI/CD service). If you are just interested in the tool
