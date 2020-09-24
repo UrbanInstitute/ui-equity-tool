@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform:
+  - AWS::Serverless-2016-10-31
+  - AWS::CodeStar
+
+Parameters:
+  ProjectId:
+    Type: String
+    Description: CodeStar projectId used to associate new resources to team members
+  CodeDeployRole:
+    Type: String
+    Description: IAM role to allow AWS CodeDeploy to manage deployment of AWS Lambda functions
+  Stage:
+    Type: String
+    Description: The name for a project pipeline stage, such as stg or Prod, for which resources are provisioned and deployed
+    Default: ""
+
+Globals:
+  Function:
+    AutoPublishAlias: live
+
+    Environment:
+      Variables:
+        LD_LIBRARY_PATH: "local/lib:$LD_LIBRARY_PATH"
+        DATA_BUCKET: INSERT_BUCKET_HERE
+        DATA_BUCKET_REGION: INSERT_REGION_HERE
+        API_BUCKET: !Sub INSERT_BUCKET_HERE(should_match_name_of_EquityAssessmentBucket)
+        FILE_BUCKET_REGION: INSERT_REGION_HERE
+    DeploymentPreference:
+      Enabled: true
+      Type: AllAtOnce
+      Role: !Ref CodeDeployRole
+
+Resources:
+  EquityAssessment:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: equity_calculations.handler
+      Runtime: python3.7
+      Timeout: 900
+      MemorySize: 3008
+      CodeUri:
+        Bucket: INSERT_BUCKET_HERE
+        Key: INSERT_FILEPATH_TO_DEPLOYMENT_PKG_HERE
+      Role: INSERT_IAM_ROLE_ARN_HERE
+      Events:
+        CreateOutputEvent:
+          Type: S3
+          Properties:
+            Bucket: !Ref EquityAssessmentBucket # bucket must be created in the same template
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: input-data/
+                  - Name: suffix
+                    Value: .csv
+
+  EquityToolBackendAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Sub "${Stage}"
+      Auth:
+        ApiKeyRequired: true # sets for all methods
+        UsagePlan:
+          CreateUsagePlan: PER_API
+          Description: Developer Usage plan for this API
+          UsagePlanName: INSERT_A_NAME_HERE
+
+  StatusChecker:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./scripts/lambda/
+      Handler: getstatus_and_getfile.handler
+      Runtime: python3.8
+      Timeout: 45
+      MemorySize: 1028
+      Role: INSERT_IAM_ROLE_ARN_HERE
+      Events:
+        GetStatusEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref EquityToolBackendAPI
+            Path: /getstatus/{fileid}
+            Method: get
+            Auth:
+              ApiKeyRequired: true
+        SubmitJobEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref EquityToolBackendAPI
+            Path: /getfile/{fileid}
+            Method: get
+            Auth:
+              ApiKeyRequired: true
+
+  EquityAssessmentBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: INSERT_BUCKET_NAME_HERE
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteInputData
+            Prefix: input-data/
+            Status: Enabled
+            ExpirationInDays: "7"
+          - Id: DeleteDemoData
+            Prefix: output-data/demographic-bias/
+            Status: Enabled
+            ExpirationInDays: "7"
+          - Id: DeleteGeoData
+            Prefix: input-data/geo-bias/
+            Status: Enabled
+            ExpirationInDays: "7"
+
+  SampleBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: EquityAssessmentBucket
+      PolicyDocument:
+        Statement:
+          - Action:
+              - "s3:GetObject"
+            Effect: "Allow"
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:aws:s3:::"
+                  - Ref: EquityAssessmentBucket
+                  - "/reference-data/sample-data/*"
+            Principal: "*"
