@@ -1,3 +1,5 @@
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 # Spatial Equity Data Tool
 
 This repo contains all the data and code powering the [Spatial Equity Data Tool](https://apps.urban.org/features/equity-data-tool/).
@@ -8,6 +10,8 @@ methodology/calculations and/or don't want to setup your own AWS infrastructure
 for the tool, you can skip most of the files in this repo and head straight to
 `scripts/lambda/equity_calculations.py`.
 
+## License
+This code is licensed under the GPLv3 License
 
 ## Codestar Files
 If you are not planning on deploying to AWS, or using AWS services, you can skip
