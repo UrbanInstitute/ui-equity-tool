@@ -5,43 +5,33 @@ phases:
     runtime-versions:
       python: 3.8
     commands:
-
       # Upgrade AWS CLI to the latest version
       - pip install --upgrade awscli
 
   pre_build:
     commands:
-
       # Discover and run unit tests in the 'tests' directory. For more information, see <https://docs.python.org/3/library/unittest.html#test-discovery>
       # - python -m unittest discover tests
-  
+
   build:
     commands:
-
       # Use AWS SAM to package the application by using AWS CloudFormation
       - aws cloudformation package --template template.yml --s3-bucket $S3_BUCKET --output-template template-export.yml --debug
 
       # Do not remove this statement. This command is required for AWS CodeStar projects.
       # Update the AWS Partition, AWS Region, account ID and project ID in the project ARN on template-configuration.json file so AWS CloudFormation can tag project resources.
       - sed -i.bak 's/\$PARTITION\$/'${PARTITION}'/g;s/\$AWS_REGION\$/'${AWS_REGION}'/g;s/\$ACCOUNT_ID\$/'${ACCOUNT_ID}'/g;s/\$PROJECT_ID\$/'${PROJECT_ID}'/g' template-configuration.json
-      
-  # post_build:
-    # commands:
-      - cp scripts/lambda/equity_calculations.py equity_calculations.py
-      - zip -u equity_tool_deployment_package.zip equity_calculations.py
-      - aws s3 rm "{INSERT_S3_LINK_HERE}/equity_tool_deployment_package.zip"
-      - aws s3 cp equity_tool_deployment_package.zip "{INSERT_S3_LINK_HERE}/equity_tool_deployment_package.zip"
-      - aws lambda update-function-code --function-name "{INSERT_FUNCTION_NAME_HERE}" --s3-bucket "{INSERT_BUCKET_HERE}" --s3-key "equity_tool_deployment_package.zip"
-      
-      
 
+      # post_build:
+      # commands:
+      - cp scripts/lambda/equity_calculations.py equity_calculations.py
+      - zip -u equity_tool_deployment_package_3.9.zip equity_calculations.py
+      - aws s3 rm "s3://${DATA_BUCKET}/lambda/equity_tool_deployment_package.zip"
+      - aws s3 cp equity_tool_deployment_package_3.9.zip "s3://${DATA_BUCKET}/lambda/equity_tool_deployment_package.zip"
+      - aws lambda update-function-code --function-name "equity-tool-calculator-${Stage}" --s3-bucket "${DATA_BUCKET}" --s3-key "lambda/equity_tool_deployment_package.zip"
 
 artifacts:
   type: zip
   files:
     - template-export.yml
     - template-configuration.json
-
-
-
-    

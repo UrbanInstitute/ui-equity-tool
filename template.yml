@@ -6,26 +6,28 @@ Transform:
 Parameters:
   ProjectId:
     Type: String
-    Description: CodeStar projectId used to associate new resources to team members
+    Description: CodeStar projectId used to associate new resources to team members.
   CodeDeployRole:
     Type: String
-    Description: IAM role to allow AWS CodeDeploy to manage deployment of AWS Lambda functions
+    Description: IAM role to allow AWS CodeDeploy to manage deployment of AWS Lambda functions.
   Stage:
     Type: String
-    Description: The name for a project pipeline stage, such as stg or Prod, for which resources are provisioned and deployed
+    Description: The name for a project pipeline stage, such as stg or Prod, for which resources are provisioned and deployed.
     Default: ""
 
 Globals:
   Function:
     AutoPublishAlias: live
-
+    Tags:
+      Project-Code: <Project-Code>
+      Project-Name: <Project-Name>
     Environment:
       Variables:
         LD_LIBRARY_PATH: "local/lib:$LD_LIBRARY_PATH"
-        DATA_BUCKET: INSERT_BUCKET_HERE
-        DATA_BUCKET_REGION: INSERT_REGION_HERE
-        API_BUCKET: !Sub INSERT_BUCKET_HERE(should_match_name_of_EquityAssessmentBucket)
-        FILE_BUCKET_REGION: INSERT_REGION_HERE
+        DATA_BUCKET: !Sub "<equity_infrastructure_bucket>-${Stage}"
+        DATA_BUCKET_REGION:  <some-region>
+        API_BUCKET: !Sub "<equity_file_bucket>-${Stage}"
+        FILE_BUCKET_REGION:  <some-region>
     DeploymentPreference:
       Enabled: true
       Type: AllAtOnce
@@ -36,13 +38,21 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: equity_calculations.handler
-      Runtime: python3.7
+      Runtime: python3.9
       Timeout: 900
-      MemorySize: 3008
+      MemorySize: 6016
+      AutoPublishCodeSha256: "11"
+      FunctionName: !Sub "<some-name>-${Stage}"
       CodeUri:
-        Bucket: INSERT_BUCKET_HERE
-        Key: INSERT_FILEPATH_TO_DEPLOYMENT_PKG_HERE
-      Role: INSERT_IAM_ROLE_ARN_HERE
+        Bucket: !Sub "<equity_infrastructure_bucket>-${Stage}"
+        Key: !Sub "lambda/equity_tool_deployment_package.zip"
+      Role: arn:aws:iam::<some-account>:role/equity-assessment-tool-lambda-role
+      Tags:
+        TAG1: Project-Code <Project-Code>
+        TAG2: Project-Name  <Project-Name>
+        TAG3: Name  <equity_file_bucket>
+        TAG4: Tech-Team DS
+        TAG5: Center Tech
       Events:
         CreateOutputEvent:
           Type: S3
@@ -61,12 +71,24 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       StageName: !Sub "${Stage}"
+      Name: !Sub "<some-name>-${Stage}"
       Auth:
         ApiKeyRequired: true # sets for all methods
         UsagePlan:
           CreateUsagePlan: PER_API
           Description: Developer Usage plan for this API
-          UsagePlanName: INSERT_A_NAME_HERE
+          UsagePlanName: !Sub "<some-name>-${Stage}"
+          Tags:
+            - Key: "Project-Code"
+              Value: " <Project-Code>"
+            - Key: "Project-Name"
+              Value: " <Project-Name>"
+            - Key: "Name"
+              Value: " <equity_file_bucket>"
+            - Key: "Tech-Team"
+              Value: "DS"
+            - Key: "Center"
+              Value: "Tech"
 
   StatusChecker:
     Type: AWS::Serverless::Function
@@ -76,7 +98,8 @@ Resources:
       Runtime: python3.8
       Timeout: 45
       MemorySize: 1028
-      Role: INSERT_IAM_ROLE_ARN_HERE
+      FunctionName: !Sub "equity-tool-job-checker-${Stage}"
+      Role: arn:aws:iam:: <some-account>:role/equity-assessment-tool-lambda-role
       Events:
         GetStatusEvent:
           Type: Api
@@ -98,7 +121,18 @@ Resources:
   EquityAssessmentBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: INSERT_BUCKET_NAME_HERE
+      BucketName: !Sub " <equity_file_bucket>-${Stage}"
+      Tags:
+        - Key: "Project-Code"
+          Value: " <Project-Code>"
+        - Key: "Project-Name"
+          Value: " <Project-Name>"
+        - Key: "Name"
+          Value: "<equity_file_bucket>"
+        - Key: "Tech-Team"
+          Value: "DS"
+        - Key: "Center"
+          Value: "Tech"
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:

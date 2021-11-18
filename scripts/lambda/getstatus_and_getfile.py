@@ -41,6 +41,7 @@ def handler(event, context):
         if event["resource"].startswith("/getfile"):
             pathparams = event["pathParameters"]
             fileid = pathparams["fileid"]
+
             print(fileid)
 
             s3 = boto3.client("s3")
@@ -51,6 +52,8 @@ def handler(event, context):
                     Bucket=api_bucket,
                     Key="output-data/api-response/" + str(fileid) + ".json",
                 )
+                size_mb = int(x["ResponseMetadata"]["HTTPHeaders"]["content-length"]) / 1000000
+                
                 output_json = x["Body"].read().decode()
                 file = json.loads(output_json)
                 status_code = 200
@@ -97,6 +100,7 @@ def handler(event, context):
                     Bucket=api_bucket,
                     Key="update-data/" + str(fileid) + ".json",
                 )
+                
                 output_json = x["Body"].read().decode()
                 file = json.loads(output_json)
                 status_code = 200
