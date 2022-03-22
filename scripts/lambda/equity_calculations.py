@@ -1859,7 +1859,14 @@ def handler(event, context):
 
     # confirm that total number of points is same for geographic and
     # demographic disparity
-    assert tot_weighted_counts == temp["weighted_counts"].sum(), "weighted counts same"
+    if (abs(tot_weighted_counts- temp["weighted_counts"].sum()) >= 0.00001):
+        # raise error and stop
+        status_json["updates"]["error-messages"] = True
+        status_json["error-messages"]["sjoin_failed"] = True
+        update_status_json(
+            system_key=system_key, status_json=status_json, bucket=bucket
+        )
+        raise ValueError("Weighted counts different for geographic and demographic disparity")
 
     # data_prop =  proportion of datapoints within the geo, or # of weighted
     # datapoints within geo (ie weighted_counts) / total number of weighted
