@@ -1,0 +1,8 @@
+fiona==1.8.20 
+geopandas==0.9.0
+numpy==1.21.2 
+pandas==1.3.3 
+requests==2.26.0
+rtree==0.9.7
+shapely==1.7.1
+urllib3==1.26.7

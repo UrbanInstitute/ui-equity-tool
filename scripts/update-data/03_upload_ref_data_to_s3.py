@@ -33,7 +33,8 @@ def write_out_tool_data_to_s3(year, output_bucket, output_region):
     Args:
         year (str): Year of ACS data to write out
         output_bucket (str): Name of output S3 infrastructure buket
-        output_region (str): Name of AWS region associated with bucket
+        output_region (str): Name of AWS region assoiated with bucket, should be
+        "us-east-1"
         
     """    
     # geo_pairs (dict): Dictionary of geography pairs used in tool

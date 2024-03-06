@@ -5,7 +5,7 @@ library(dotenv)
 # ---- Set params ----------
 
 # Set year
-year <- 2019
+year <- 2022
 
 load_dot_env()
 
@@ -22,9 +22,8 @@ ui_equity_bucket_region <- as.character(Sys.getenv("equity_file_bucket_region"))
 
 # Set conda env to use, you will need to explicitly setup and name this conda
 # enviornment on your local machine with the packages imported in the 03 python
-# script and listed in the README. Note we named this conda env the same as the
-# ui_equity_bucket env var, so you may need to change.
-use_condaenv(condaenv = ui_equity_bucket)
+# script and listed in the README
+use_condaenv(condaenv = "ui-equity-tool-stg")
 
 # ---- Run Data Update scripts in order ----------
 

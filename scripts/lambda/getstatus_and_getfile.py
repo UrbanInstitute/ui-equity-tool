@@ -37,15 +37,21 @@ def formatter(data, event, statuscode):
 
 
 def handler(event, context):
+    print("Received event: " + json.dumps(event, indent=2))
+    
     if event["httpMethod"] == "GET":
         if event["resource"].startswith("/getfile"):
             pathparams = event["pathParameters"]
             fileid = pathparams["fileid"]
-
+            
+            # For testing:
+            # fileid = "new_york_wifi"
+            # api_bucket = "ui-equity-tool-stg"
+            # data_bucket_region = "us-east-1"
             print(fileid)
 
             s3 = boto3.client("s3")
-
+            
             try:
                 # If object exists, get file as json
                 x = s3.get_object(
@@ -61,14 +67,14 @@ def handler(event, context):
 
             except ClientError as e:
                 if e.response["Error"]["Code"] == "NoSuchKey":
-                    # The object does not exist.
-                    status_code = 200
+                # The object does not exist.
+                    status_code = 500
                     file = []
                     file_exists = False
                 else:
                     # Something else has gone wrong.
                     print("Internal AWS Error")
-                    status_code = 500
+                    status_code = 500 
                     file = []
                     file_exists = None
                     raise ValueError
@@ -95,7 +101,6 @@ def handler(event, context):
             s3 = boto3.client("s3")
 
             try:
-                # If object exists, get file as json
                 x = s3.get_object(
                     Bucket=api_bucket,
                     Key="update-data/" + str(fileid) + ".json",
@@ -105,6 +110,7 @@ def handler(event, context):
                 file = json.loads(output_json)
                 status_code = 200
                 file_exists = True
+                
             except ClientError as e:
                 if e.response["Error"]["Code"] == "NoSuchKey":
                     # The object does not exist.

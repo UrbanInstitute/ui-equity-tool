@@ -1,9 +1,11 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 # Spatial Equity Data Tool
 
-This repo contains some example files, code and data which power Urban's [Spatial Equity Data tool](https://apps.urban.org/features/equity-data-tool/)
+This repo contains some example files, code and data which power Urban's [Spatial Equity Data Tool](https://apps.urban.org/features/equity-data-tool/). We also have [robust
+ public documentation](https://ui-research.github.io/sedt_documentation/) 
+ describing how the tool works. 
 
-All of the tools infrastructure is deployed using AWS Codestar (a CI/CD
+All of the tool's infrastructure is deployed using GitHub Actions (a CI/CD
 service). If you are just interested in the tool methodology/calculations and/or
 don't want to setup your own AWS infrastructure for the tool, you can skip most
 of the files in this repo and head straight to
@@ -16,10 +18,9 @@ This code is licensed under the GPLv3 license.
 # Prerequisites
 ## Environment Variables
 
-Environment variables need to be set in two places:
-
-1) In an `.env` file in the root of this repo. This file will be used by scripts
-   that are run locally on your machine. The `.env` file should look like:
+Environment variables need to be set in an `.env` file in the root of this repo. 
+This file will be used by scripts that are run locally on your machine. 
+The `.env` file should look like:
    ```
    Stage=XXX
    equity_file_bucket=XXX
@@ -27,18 +28,16 @@ Environment variables need to be set in two places:
    equity_file_bucket_region=XXX
    ```
    By default the `.env` file is added to the gitignore so it will need to be
-   added manually to your repo locally. In the rest of this README, we will
-   refer to these env variables as follows: <equity_file_bucket>. For
+   added manually to your repo locally. For
    confidentiality reasons, **we have inserted several placeholder values within
    the files in this repo that look like `<some-name>` that you will need to
-   provide  yourself.**
+   provide yourself.**
 
 
-2) In the CodeBuild project associated with the pipeline. This needs to be set 
-   **manually** on the AWS console after the project has first been deployed. 
-   These environment variables are used when deploying the scripts and AWS
-   resources in `template.yaml` and `buildspec.yml` as well as in the Lambda
-   function code. The key variable used in Codebuild is `Stage`.
+## Staging and Production 
+Updates to the `staging` and `production` branches in this repo will trigger a GitHub Actions workflow to deploy the updates to the relevant resources on AWS. GitHub Actions will display a green check when the updates are deployed. If there was an error deploying the updates, GitHub Actions will email the person who triggered the workflow. 
+
+The AWS resources are managed through separate staging and production CloudFormation stacks. 
 
 ## AWS credentials
 
@@ -56,10 +55,20 @@ the following S3 buckets:
 
 You will need to install a conda environment with the packages laid
 out in `environment.yml`. Note right now they all list OSx specific packages, as
-that is a limitation of conda. Key packages to install are
-`geopandas` version >= 0.9.0 and `boto3`.
+that is a limitation of conda. The packages are also laid out in
+`packagelist.txt` (Mac) and `packagelist-win.txt` (Windows)
+and you can recreate the conda environment with:
 
-As a backup here is a manual list of python packages I installed on my conda
+`conda create --name <env> --file packagelist.txt`
+
+OR
+
+`conda create --name <env> --file packagelist-win.txt`
+
+Key packages to install are
+`geopandas` version >= 0.9.0,`pandas` version = 1.3.0, and `boto3`.
+
+As a backup, here is a manual list of python packages to install in a conda
 environment from the `conda-forge` channel:
 
 - `geopandas`
@@ -84,60 +93,65 @@ And R packages below:
 
 # Files 
  
-Below is an explanation of all folders and files in this repo. Italicized file
-names are files required by AWS Codestar, the CI/CD service we use to deploy the
-Spatial Equity Tool. Some of the folders/subfolders may not exist upon initial
-cloning but will be written out as you run the `scripts/`
-
+Below is an explanation of all folders and files in this repo. 
   - `.env`: A gitignored env file which contains environment variables used by
-    scripts in the `scripts/` folder.
+    scripts in the `scripts/` folder. Will need to be placed there manually when
+    you first clone this repo. 
 
-  - *`buildspec.yml`*: This file is used by AWS CodeBuild to package your
-  application for deployment to AWS CloudFormation. It is a collection of build
-  commands to build your Cloudformation template and run your build. Most of
-  this file is just the default Codestar template. But we have
-  modified this to also manually update the equity tool lambda function using
-  `aws lambda update-function-code` as we have noticed Codestar often has
-  problems updating lambda functions that rely on deployment packages stored
-  in S3 without this line.
+  - `.github/workflows/sam-pipeline.yml`: A gitignored fole containing the GitHub Action workflow that builds and 
+    deploys the SAM application. This is triggered by updates to the `staging` and
+    `production` branches. The workflow first defines a `STAGE` and `STACK_NAME` 
+    parameter based on which branch was updated. It then uses the relevant IAM role 
+    to build and deploy the application to AWS. 
 
-  - *`template.yml`*: A template that defines all the AWS resources needed for the
-  operation of the Spatial Equity Data Tool. This includes an S3 bucket, 2 lambda
-  functions, an API Gateway, and appropriate permissions for all of them. Note
-  that we make use of some predefined roles, like `equity-assessment-tool-role`
-  that we have manually created and is only available in Urban's AWS account. For
-  reproducibility we have included a copy of the single IAM policy that is
-  attached to the `equity-assessment-tool-role` in the `docs/` folder so you can
-  recreate this role if you want. Note that you will need to edit the IAM role to
-  reflect your S3 bucket path.
+  - `template.yml`: A gitignored [SAM template](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-specification-template-anatomy.html) that defines all the AWS resources
+    needed for the backend operation of the Spatial Equity Data Tool. This
+    includes 2 S3 buckets, 4 Lambda functions, an API Gateway, a state machine, 
+    an EventBridge rule, and appropriate permissions for all of them. Note that 
+    we make use of some predefined roles (`equity-assessment-tool-lambda-role `, 
+    `sedt-invoke-stepfunction-role`, and `sedt-stepfunction-role`) that we have 
+    manually created and are only available in Urban's AWS account. You can create 
+    the policies yourself in this template file, but it was really finicky and just 
+    an absolute pain to get setup properly, so we resorted to manually creating the 
+    policies in the IAM console and then referencing them in this template file.
 
-  - *`template-configuration.json`* - this file contains the AWS project ARN with
-  placeholders used for tagging resources with the project ID.
+  - `samconfig.toml`: A gitignored [SAM configuration file](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-config.html) 
+    that is referenced when building and deploying the SAM application. This is also 
+    where AWS resources tags are defined and applied to all resources in the stack. 
 
-  - `equity_tool_deployment_package_3.9.zip` - the deployment package with the
-  compiled dependencies and the code (`equity_calculations.py`) that powers
-  the workhorse lambda function. For instructions on how to create this
-  deployment package from scratch, please see
-  `docs/creating_deployment_pkg_with_geopandas.md`.
-
-  - `environment.yml`: The conda environment file which lists all dependencies
-    and packages used to run the R and python scripts in `scripts/`. You can use
-    this to recreate our conda environment, though beware that most of the
-    packages listed are OSx/Mac specific. 
+  - `environment.yml`: A gitignored conda environment file which lists all dependencies
+    and packages used to run the R and python scripts in `scripts/`. Since this file has not been pushed to GitHub, we recommend using one fo the following two files:
   
-  - `docs/`
-    - `creating_deployment_pkg_with_geopandas.md`: Instructions for setting up
-      an AWS lambda deployment package with the geopandas library and some
-      other compiled dependencies from scratch. If you use the deployment package,
-      you can import and use `geopandas` functions in your lambda code. We have 
-      found this to be cost effective, and efficient way to do spatial 
-      operations in AWS.
-    - `create-deployment-pkg.sh`: A helper script that automates some of the
-      steps laid out in `creating_deployment_pkg_with_geopandas.md`.
+    - `packagelist.txt`: A list of all packages in the Conda environment for OSx users. You can recreate the
+      conda environment by running `$ conda create --name <env> --file
+      packagelist.txt` from the root of the repo. Note that the R packages
+      required to run the code in `scripts/update-data` may not show up correctly
+      in this file and may need to still be manually installed into the conda
+      environment.  
+    - `packagelist-win.txt`: A list of all packages in the Conda environment for Windows users. You can recreate the
+      conda environment by running `$ conda create --name <env> --file
+      packagelist-win.txt` from the root of the repo. Note that the R packages
+      required to run the code in `scripts/update-data` may not show up correctly
+      in this file and may need to still be manually installed into the conda
+      environment.  
+  
+  - `speed-test-data/`: Gitignored folder which contains datasets of varying
+    sizes used to perform speed tests. CSVs are written into this folder by
+    `scripts/run-tests/run_speed_tests.R`.
+
+  - `edge-test-data/`: Gitignored folder which contains datasets used to perform
+    edge case testing. CSV's are written into this folder by
+    `scripts/run-tests/run_edge_case_tests.R`.
+
+  - `sample-data/`: Folder which contains all of the sample datasets used in the
+    tool, with the exception of the New Orleans data as it is bigger than
+    Github's 100 MB file size limit. It also contains JSONS for each sample
+    dataset which specify any default filters and weights which are used by the
+    frontend.
 
   - `reference-data/`: Contains all of the tool's reference data. Some
-    subfolders may not exist when cloning, but are written out by `scripts/update-data/`
-    - `2019/`: 
+    subfolders may not exist when cloning, but are written out by `scripts/update-data/`. The `reference-data/` directory will have a subdirectory for each ACS 5-year Survey end year currently supported by the tool. That is currently 2019, 2021, and 2022.
+    - `{year}/`: 
       * `acs_variable_definitions/`:
         * `poverty_population.csv`: CSV with manually checked ACS variable codes
           which correspond to human readable file names for the low-income population
@@ -170,7 +184,8 @@ cloning but will be written out as you run the `scripts/`
         impute some values in columns which we use as filters and weights in the
         tool, and then re-upload to S3.  
     - `lambda/`
-      * `equity_calculations.py`: The key workhorse lambda function which
+      - `equity-calculations`
+        * `equity_calculations.py`: The key workhorse lambda function which
         performs geographic and demographic disparity calculations for datasets.
         This lambda function is triggered whenever a file is written to the
         `input-data/` prefix of the <equity_file_bucket>. At a high level, this
@@ -187,14 +202,14 @@ cloning but will be written out as you run the `scripts/`
         S3, and remove most of the `update_status_json` calls. If you want to create a
         version of this script to calculate disparity scores locally and need help
         modifying this script to meet your needs, please reach out to us!
+        * `Dockerfile`: The Dockerfile that defines a custom Lambda container image with the requisite Python packages needed by the calculator Lambda function. See [here](https://docs.aws.amazon.com/lambda/latest/dg/images-create.html) for more information on using Lambda container images. 
+        * `requirements.txt` The Dockerfile installs the packages in the `requirements.txt` file in this  directory. We specify that we want the equity-calculator Lambda function to use this image in the `template.yml` file using the `PackageType` property and by specifying the `DockerFile`, `DockerContext`, and `DockerTag` metadata. 
 
-      * `getstatus_and_getfile.py`: Lambda function which checks status of
-        existing jobs and gets data for completed jobs. This lambda function is
-        connected to an API Gateway with different endpoints for checking status
-        and getting completed files. See `template.yml` for the exact endpoint
-        configurations. This API works closely with the internal frontend
-        API to get the status of existing jobs and get data for
-        completed jobs.
+      * `check_files_to_wait_on.py`: Lambda function which determines whether the user-submitted request is from the public API and, if so, whether it includes custom demographic and geographic files. The function looks for files with the `input-data/` prefix in the <equity_file_bucket>. It is the first of three files in the step function. To read more about the step function, see [this blog post](https://medium.com/urban-institute/building-a-public-api-for-the-spatial-equity-data-tool-4f4d83c6f7cb). 
+
+      * `determine_uploaded_files.py`: Lambda function which determines whether the files identified in `check_files_to_wait_on.py` have been successfully uploaded to <equity_file_bucket>. This function checks for the identified files with the `input-data/` prefix in the <equity_file_bucket>. If the files have not finished uploading, the step function waits and then triggers this Lambda function again. This cycle repeats until this lambda function determines that all of the files have finished uploading.
+        
+      * `getstatus_and_getfile.py`: Lambda function which checks status of existing jobs and gets data for completed jobs. This lambda function is connected to an API Gateway with different endpoints for checking status and getting completed files. See `template.yml` for the exact endpoint configurations. This API works closely with the internal frontend API to get the status of existing jobs and get data for completed jobs.
       
     - `update-data/`: Updates tool data
       * `README.md`: Contains more specific instructions on exactly how to
@@ -214,5 +229,8 @@ cloning but will be written out as you run the `scripts/`
         `reference-data/{year}/{geography}/*` into the S3 infrastructure bucket
         as CSVs and pickles (pickled files used for performance speedups).
 
+
+
+Please provide feedback by opening [GitHub Issues](https://github.com/UrbanInstitute/ui-equity-tool/issues) or contacting us at [sedt@urban.org](mailto:sedt@urban.org).
 
 

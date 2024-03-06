@@ -5,10 +5,10 @@ need to run `main-update-data-script.R`, which is really a wrapper to source
 all the data update scripts in order. Script `03` defines a python function, 
 which is then used in `main-update-data-script.R`. This may seem a little 
 roundabout but we do this so we can easily define all parameters just within 
-the main script. Before running `main-update-data-script.R`, you will want to do
+the main script. Before running `main-update-data-script.R`, you may want to do
 the following:
 
-   - Adjust the year parameter at the top of `main-update-data-script.R` to the 
+   - adjust the year parameter at the top of `main-update-data-script.R` to the 
    desired end year for the 5-year ACS.
    - Ensure that you have a `.env` file in the root directory with the appropriate
    environment variables set and which are used as parameters in

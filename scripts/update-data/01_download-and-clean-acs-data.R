@@ -498,7 +498,7 @@ read_in_and_clean_acs_data <- function(year,
     #       For some Total Population variables, the ACS reported percentages are NA
     #       because both the ACS numerator and denominators are 0. In that case we
     #       manually insert an estimate and MOE of 0 for the percentage.
-    #   add_definitions_dfL A dataframe of variables to create via addition of
+    #   add_definitions_df: A dataframe of variables to create via addition of
     #       multiple ACS variables
 
 
@@ -621,33 +621,28 @@ read_in_and_clean_acs_data <- function(year,
 
 
             # For tract level data, we need to do a bit more data cleaning
+            
+            # in 2022 ACS, switched from commas to semicolons to delimit tract names
+            # accordingly, we define name_sep object based on the year to define the appropriate delimeter
+            name_sep <- if_else(year == 2022, "; ", ", ")
+            
             acs_raw_cleaned <- acs_raw %>%
                 mutate(
                     # Add area of tract to use for city definition cutoffs
                     area_tract = st_area(.),
-                    # Split NAME column to extract tract name and county name
-                    # later
-                    x = str_split(NAME, ","),
                     # Extract state and county fips from full GEOID
                     state_fips = str_sub(GEOID, start = 1, end = 2),
                     county_fips = str_sub(GEOID, start = 3, end = 5),
                 ) %>%
-                mutate(
-                    # Extract tract name (ie Census tract 1) from NAME column.
-                    # This will be used in conjunction with state_abbv and
-                    # cleaned_name column in place data to generate NAME column
-                    # for display on frontend
-                    tract_name = map_chr(x, ~ paste0(
-                        .x %>% pluck(1)
-                    )),
-                    county_name = map_chr(x, ~ paste0(
-                        .x %>% pluck(2)
-                    ) %>% str_trim())
-                ) %>%
-                # x is a list column bc we used str_split. We don't need it
-                # anymore so we delete. Now we can store future dfs as flat
-                # files
-                select(-x) %>%
+              mutate(
+                # Extract tract name (ie Census tract 1) from NAME column.
+                # This will be used in conjunction with state_abbv and
+                # cleaned_name column in place data to generate NAME column
+                # for display on frontend
+                tract_name = str_split_i(NAME, name_sep, 1)
+                ,
+                county_name = str_split_i(NAME, name_sep, 2)
+              ) %>%
                 left_join(state_abbv, by = "state_fips")
         } else {
             acs_raw_cleaned <- acs_raw

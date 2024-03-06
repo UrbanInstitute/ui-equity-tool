@@ -444,11 +444,11 @@ us_state_data_props <- map(baseline_vars,
 
 # Create crosswalk between states and regions for demographic chart dropdown menu 
 # on national tool
-download.file(url = "https://www2.census.gov/programs-surveys/popest/geographies/2014/state-geocodes-v2014.xls",
-              destfile = here(str_glue("reference-data/{year}"), "state_region_crosswalk.xls"),
+download.file(url = str_glue("https://www2.census.gov/programs-surveys/popest/geographies/{year}/state-geocodes-v{year}.xlsx"),
+              destfile = here(str_glue("reference-data/{year}"), "state_region_crosswalk.xlsx"),
               mode = "wb")
 
-state_region_crosswalk <- read_excel(here(str_glue("reference-data/{year}"), "state_region_crosswalk.xls"),
+state_region_crosswalk <- read_excel(here(str_glue("reference-data/{year}"), "state_region_crosswalk.xlsx"),
                                      skip = 6,
                                      col_names = c("region", "division", "state", "name"))
 
